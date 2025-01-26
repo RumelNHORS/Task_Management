@@ -15,7 +15,7 @@ class Task(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     due_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
-    # user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks')
 
     def __str__(self):
         return self.title
