@@ -10,9 +10,15 @@ from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
+from rest_framework.authentication import SessionAuthentication
 
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return
 
 class UserRegistrationView(APIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -23,6 +29,7 @@ class UserRegistrationView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserLoginView(APIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -31,10 +38,16 @@ class UserLoginView(APIView):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            return Response({"message": "Login successful!"}, status=status.HTTP_200_OK)
+            return Response({
+                "message": "Login successful!",
+                "user": user.id,
+                "username": user.username,
+                "email": user.email
+            }, status=status.HTTP_200_OK)
         return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
     
 class UserLogoutView(APIView):
+    authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -50,8 +63,8 @@ class TaskListCreateView(generics.ListCreateAPIView):
         status_filter = self.request.query_params.get('status')
         queryset = tasks_models.Task.objects.filter(user=self.request.user)
         if status_filter:
-            status_filter = status_filter.lower().capitalize()
-            queryset = queryset.filter(status=status_filter)
+            # Use iexact for case-insensitive exact match
+            queryset = queryset.filter(status__iexact=status_filter)
         return queryset
 
     def perform_create(self, serializer):
